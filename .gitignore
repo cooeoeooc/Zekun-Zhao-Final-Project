@@ -1,0 +1,9 @@
+Final Project proposal scrape test.py
+IMDB TOP Movie.db
+IMDB.sqlite
+OMDB.sqlite
+movie_cache.json
+secrets.py
+__pycache__
+*.docx
+
