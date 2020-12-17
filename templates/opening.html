@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Movie Information</title>
+</head>
+<body>
+     <h1> IMDB TOP 250 Movies</h1>
+        <ul>
+            <li><a href="/language"> Movies Sorted by Languages </a></li>
+        </ul>
+        <ul>
+            <li><a href="/genre"> Movies Sorted by Genre</a></li>
+        </ul>
+        <ul>
+            <li><a href="/country"> Movies Sorted by Country</a></li>
+        </ul>
+        <ul>
+            <li><a href="/rating"> Movies Sorted by Rating</a></li>
+        </ul>
+    <form action="/handle_form" method="POST">
+    <p>
+    Enter the rank number of a movie, from 1 to 250 <input name="rank" type="text"/><br/><br/>
+    </p>
+    <input type="submit" value="Submit Form"/>
+    </form>
+</body>
+</html>

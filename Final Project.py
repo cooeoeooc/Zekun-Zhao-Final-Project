@@ -1,11 +1,14 @@
+from os import readlink
 import sqlite3
 import  requests
 from bs4 import BeautifulSoup
 import time
-import random
 import json
 import re
 import secrets
+import plotly
+import plotly.graph_objects as go
+from flask import Flask, render_template,request
 
 
 class Movie:
@@ -133,6 +136,7 @@ def get_imdb_top250():
     
     parameter: None
     
+    Return: a list of tuple, which contains the information of all 250 IMBD movies
     '''
     global id_ls
     id_ls=[]
@@ -169,26 +173,12 @@ def get_imdb_top250():
 
 api_key=secrets.API_KEY
 
-def save_imdb_sqlite(movie_list_of_tuple):
-    '''
-    save list of tuple into sql database
-    ------
-    parameter:
-    list of tuple, containing infomation from the Internet
-    
-    return: a database
-    '''
-    
-    
-    conn=sqlite3.connect('imdb.db')
-    c=conn.cursor()
-    
-    return None
 
 
 def make_request_api(url):
     '''Make a request to the Web API using the baseurl and params
-    
+    and return a dictionary
+    -----------------------
     Parameters
     ----------
     baseurl: string
@@ -292,11 +282,15 @@ def make_request_with_cache_omdb_api(imdb_id_list):
             movie_language=result['Language']
         except:
             movie_language='none'
-            
-        omdb_row_tuple=(movie_imdbID,movie_name,movie_rated,movie_runtime,movie_Director,movie_imdb_rating,movie_rotten_tomatoes_rating,movie_Metascore,movie_prodcution,movie_genre
-                        ,movie_country,movie_language)
-        omdb_row_tuple_list.append(omdb_row_tuple)
+        try:
+            movie_poster_id=result['Poster']
+        except:
+            movie_poster_id='none'    
         
+        omdb_row_tuple=(movie_imdbID,movie_name,movie_rated,movie_runtime,movie_Director,movie_imdb_rating,movie_rotten_tomatoes_rating,movie_Metascore,movie_prodcution,movie_genre
+                        ,movie_country,movie_language,movie_poster_id)
+        omdb_row_tuple_list.append(omdb_row_tuple)
+    #I changed here Dec 13
     #print(omdb_row_tuple_list)
     return omdb_row_tuple_list
 
@@ -351,20 +345,393 @@ def create_omdb_database(omdb_list_of_tuple):
         Movie_prodcution text,
         Movie_Genre text,
         Movie_Country text,
-        Movie_Language text)''')
+        Movie_Language text,
+        Movie_Poster text)''')
     #Insert data in the database
-    c.executemany('INSERT INTO OMDB VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',omdb_list_of_tuple)
+    c.executemany('INSERT INTO OMDB VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',omdb_list_of_tuple)
     conn.commit()#Save changes
     conn.close
     return None
+
+#from here, start the plotly function
+
+
+def make_language_bar_plot():
+    
+    ''' link to database and based on language making bar plot
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    div: The bar plot of movies sorted by language, which can be used in html templates
+    '''
+    connection= sqlite3.connect("IMDB_OMDB.sqlite")
+    xvals=['English','French','Japanese','German','Others']#this should be language
+    cursor=connection.cursor()
+    q_English='''
+    SELECT COUNT(Movie_Language)
+    FROM OMDB
+    WHERE Movie_language like ('%English%')'''
+    q_French='''
+    SELECT COUNT(Movie_language)
+    FROM OMDB
+    Where Movie_language like ('%French%')
+    '''
+    q_Japanese='''
+    SELECT COUNT(Movie_language)
+    FROM OMDB
+    Where Movie_language like ('%Japanese%')
+    '''
+    q_German='''
+    SELECT COUNT(Movie_language)
+    FROM OMDB
+    Where Movie_language like ('%German%')
+    '''
+    q_Others='''
+    SELECT COUNT(Movie_Language)
+    FROM OMDB
+    WHERE Movie_Language not like ('%English%') and Movie_Language not like ('%Japanese%') and Movie_Language not like ('%French%') and Movie_Language not like ('%German%')
+    '''
+    cursor.execute(q_English)
+    number_EN=cursor.fetchone()[0]
+   
+    cursor.execute(q_Japanese)
+    number_JN=cursor.fetchone()[0]
+    
+    cursor.execute(q_French)
+    number_FR=cursor.fetchone()[0]
+    
+    cursor.execute(q_German)
+    number_GM=cursor.fetchone()[0]
+    
+    cursor.execute(q_Others)
+    number_OT=cursor.fetchone()[0]
+    
+    yvals=[number_EN,number_FR,number_JN,number_GM,number_OT]#this should be the number of movies
+    #print(number_EN,number_FR,number_GM,number_JN,number_OT)
+    bar_data=go.Bar(x=xvals,y=yvals)
+    basic_layout=go.Layout(title='The number of movies sorted by languages')
+    fig=go.Figure(data=bar_data, layout=basic_layout)
+    #fig.write_html("bar.html",auto_open=True)
+    div=fig.to_html(full_html=False)
+    return div
+
+
+def make_genre_bar_plot():
+    ''' link to database and based on genre making bar plot
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    div: The bar plot of movies sorted by genre, which can be used in html templates
+    '''
+    connection= sqlite3.connect("IMDB_OMDB.sqlite")
+    cursor=connection.cursor()
+    
+    q_drama='''
+    SELECT COUNT(Movie_Genre)
+    FROM OMDB
+    WHERE Movie_Genre like('%Drama%')
+    '''
+    
+    q_war='''
+    SELECT COUNT(Movie_Genre)
+    FROM OMDB
+    WHERE Movie_Genre like('%War%')
+    '''
+    
+    q_comedy='''
+    SELECT COUNT(Movie_Genre)
+    FROM OMDB
+    WHERE Movie_Genre like('%Comedy%')
+    '''
+    
+    q_action='''
+    SELECT COUNT(Movie_Genre)
+    FROM OMDB
+    WHERE Movie_Genre like('%Action%')
+    '''
+    
+    q_thriller='''
+    SELECT COUNT(Movie_Genre)
+    FROM OMDB
+    WHERE Movie_Genre like('%THRILLER%')
+    '''
+    
+    q_others='''
+    SELECT COUNT(Movie_Genre)
+    FROM OMDB
+    WHERE Movie_Genre not like('%THRILLER%') and Movie_Genre not like('%Drama%') and Movie_Genre not like('%WAR%') and Movie_Genre not like('%Action%') and Movie_Genre not like('%Comedy%')    
+    '''
+    
+    cursor.execute(q_drama)
+    number_dr=cursor.fetchone()[0]
+    
+    cursor.execute(q_action)
+    number_ac=cursor.fetchone()[0]
+    
+    cursor.execute(q_comedy)
+    number_co=cursor.fetchone()[0]
+    
+    cursor.execute(q_thriller)
+    number_th=cursor.fetchone()[0]
+    
+    cursor.execute(q_war)
+    number_wa=cursor.fetchone()[0]
+    
+    cursor.execute(q_others)
+    number_ot=cursor.fetchone()[0]
+    
+    xvals=["Drama","Action","Comedy",'Thriller','War','Others']
+    yvals=[number_dr,number_ac,number_co,number_th,number_wa,number_ot]  
+    bar_data=go.Bar(x=xvals,y=yvals)
+    basic_layout=go.Layout(title='The number of movies sorted by genre')
+    fig=go.Figure(data=bar_data, layout=basic_layout)
+    div=fig.to_html(full_html=False)
+    #fig.write_html("bar.html",auto_open=True)
+    
+    return div
+
+def make_country_bar_plot():
+    ''' link to database and based on country making bar plot
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    div: The bar plot of movies sorted by country, which can be used in html templates
+    '''
+    connection= sqlite3.connect("IMDB_OMDB.sqlite")
+    cursor=connection.cursor()
+    
+    q_usa='''
+    SELECT COUNT(Movie_Country)
+    FROM OMDB
+    WHERE Movie_Country like('%USA%')
+    '''
+    
+    q_uk='''
+    SELECT COUNT(Movie_Country)
+    FROM OMDB
+    WHERE Movie_Country like('%UK%')
+    '''
+    
+    q_jp='''
+    SELECT COUNT(Movie_Country)
+    FROM OMDB
+    WHERE Movie_Country like('%Japan%')
+    '''
+    
+    q_fr='''
+    SELECT COUNT(Movie_Country)
+    FROM OMDB
+    WHERE Movie_Country like('%France%')
+    '''
+    
+    q_gm='''
+    SELECT COUNT(Movie_Country)
+    FROM OMDB
+    WHERE Movie_Country like('%German%')
+    '''
+    
+    q_ot='''
+    SELECT COUNT(Movie_Country)
+    FROM OMDB
+    WHERE Movie_Country not like('%USA%') and Movie_Country not like('%UK%') and Movie_Country not like('%Japan%') and Movie_Country not like('%France%') and Movie_Country not like('%German%')    
+    '''
+    cursor.execute(q_usa)
+    number_usa=cursor.fetchone()[0]
+    
+    
+    cursor.execute(q_uk)
+    number_uk=cursor.fetchone()[0]
+    
+    cursor.execute(q_jp)
+    number_jp=cursor.fetchone()[0]
+    
+    cursor.execute(q_fr)
+    number_fr=cursor.fetchone()[0]
+    
+    cursor.execute(q_gm)
+    number_gm=cursor.fetchone()[0]
+    
+    cursor.execute(q_ot)
+    number_ot=cursor.fetchone()[0]
+    
+    xvals=["USA","UK","Japan",'France','German','Others']
+    yvals=[number_usa,number_uk,number_jp,number_fr,number_gm,number_ot]  
+    bar_data=go.Bar(x=xvals,y=yvals)
+    basic_layout=go.Layout(title='The number of movies sorted by Country')
+    fig=go.Figure(data=bar_data, layout=basic_layout)
+    div=fig.to_html(full_html=False)
+    #fig.write_html("bar.html",auto_open=True)
+    
+    return div
+  
+def make_rated_bar_plot():
+    ''' link to database and based on rating making bar plot
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    div: The bar plot of movies sorted by rating, which can be used in html templates
+    '''
+    
+    
+    connection= sqlite3.connect("IMDB_OMDB.sqlite")
+    cursor=connection.cursor()
+    
+    q_r='''
+    SELECT COUNT(MovieRated)
+    FROM OMDB
+    WHERE MovieRated =('R')
+    '''
+    
+    q_pg='''
+    SELECT COUNT(MovieRated)
+    FROM OMDB
+    WHERE MovieRated =('PG')
+    '''
+    
+    q_pg13='''
+    SELECT COUNT(MovieRated)
+    FROM OMDB
+    WHERE MovieRated =('PG-13')
+    '''
+    
+    q_g= '''
+    SELECT COUNT(MovieRated)
+    FROM OMDB
+    WHERE MovieRated =('G')
+    '''
+    
+    q_ot=''' 
+    SELECT COUNT(MovieRated)
+    FROM OMDB
+    WHERE MovieRated <>('PG-13') and MovieRated<>('R') and MovieRated<>('PG')and MovieRated<>('G')
+    '''
+    
+    cursor.execute(q_pg)
+    number_pg=cursor.fetchone()[0]
+    
+    cursor.execute(q_pg13)
+    number_pg13=cursor.fetchone()[0]
+    
+    cursor.execute(q_r)
+    number_r=cursor.fetchone()[0]
+    
+    cursor.execute(q_g)
+    number_g=cursor.fetchone()[0]
+    
+    cursor.execute(q_ot)
+    number_ot=cursor.fetchone()[0]
+    
+    xvals=["R","PG","PG-13","G","Others"]
+    yvals=[number_r,number_pg,number_pg13,number_g,number_ot]
+    
+    bar_data=go.Bar(x=xvals,y=yvals)
+    basic_layout=go.Layout(title='The number of movies sorted by Rating')
+    fig=go.Figure(data=bar_data, layout=basic_layout)
+    div=fig.to_html(full_html=False)
+    #div=fig.write_html("bar.html",auto_open=True)
+    
+    return div
+    
+    
+def make_user_interactive_search(input_id):
+    '''
+    using input number to search the database, and generate a string and a url to be plugged in html templates.
+    
+    parameter:
+    -----------------
+    input_id: string, represent the number of rank of the IMDB 250 list
+    ----
+    return:
+    Movie_intro: a string contain movies' information
+    Movie_poster_url: string, the url of poster
+    
+    
+    '''
+    connection= sqlite3.connect("IMDB_OMDB.sqlite")
+    cursor=connection.cursor()
+    
+    q_info='''
+    SELECT IMDB.MovieName, IMDB.MovieReleaseYear,OMDB.MovieRated,OMDB.MovieDirector,OMDB.Movie_IMDB_Rating,OMDB.Movie_Rotten_Tomatoes_Rating,OMDB.Movie_Metascore,OMDB.Movie_Poster
+    FROM OMDB JOIN IMDB ON IMDB.MovieID=OMDB.Movie_ID
+    WHERE IMDB.Rank={input_id1} 
+    '''.format(input_id1=input_id)
+    
+    cursor.execute(q_info)
+    Movie_info=cursor.fetchone()
+    
+    Movie_name=Movie_info[0]
+    Movie_year=Movie_info[1]
+    Movie_rating=Movie_info[2]
+    Movie_Director=Movie_info[3]
+    Movie_IMDB_Rating=Movie_info[4]
+    Movie_rotten_tomato=Movie_info[5]
+    Movie_metascore=Movie_info[6]
+    Movie_poster_url=Movie_info[7]
+    Movie_intro=f'<{Movie_name}> is a {Movie_year} year, {Movie_rating} rating movie. The movie is directed by {Movie_Director}. The movie got {Movie_IMDB_Rating} IMDB Rating, {Movie_rotten_tomato} Rotten Tomatoes Rating, and {Movie_metascore} metacritic rating.'
+    #print(Movie_intro) # check correct
+    return [Movie_intro,Movie_poster_url]
+    
+    
+#from here, start the app function
+app=Flask(__name__)
+
+@app.route('/')
+def index():
+    #print(render_template('opening.html'))
+    return render_template('opening.html')
     
 
+@app.route('/handle_form', methods=['GET','POST'])
+def intro():
+    input_rank=request.form["rank"]
+    intro=make_user_interactive_search(input_rank)[0]
+    img=make_user_interactive_search(input_rank)[1]
+    print("this is img!!!",img)
+    return render_template('results.html',Intro=intro,img1=img)
     
-        
-        
-        
+@app.route('/language')
+def language():
+    lang_plot_div=make_language_bar_plot()
+    return render_template("display.html",plot_div=lang_plot_div)
+
+@app.route('/genre')
+def genre():
+    genre_plot_div=make_genre_bar_plot()
+    return render_template("display.html",plot_div=genre_plot_div)
+
+@app.route('/country')
+def country():
+    country_plot_div=make_country_bar_plot()
+    return render_template("display.html",plot_div=country_plot_div)
+    
+@app.route('/rating')
+def rating():
+    rating_plot_div=make_rated_bar_plot()
+    return render_template('display.html',plot_div=rating_plot_div)
+    
+
 if __name__ == "__main__":
     IMDB_tuple_list=get_imdb_top250()
     omdb_list_of_tuple=make_request_with_cache_omdb_api(id_ls)
     create_imdb_database(IMDB_tuple_list)
-    create_omdb_database(omdb_list_of_tuple)    
+    create_omdb_database(omdb_list_of_tuple)
+    
+    #If want to create database, use above 4 functions
+    
+    app.run(debug=True)
