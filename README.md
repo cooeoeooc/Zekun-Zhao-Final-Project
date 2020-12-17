@@ -1,5 +1,5 @@
 # Zekun-Zhao-Final-Project
-The main project is “Final Project.” I also upload the “secrets”, which contains my API key for this program. 
+The main project is “Final Project.” I also upload the “Secrets”, which contains my API key for this program. 
 There are several important functions in the file, and I also add doc string to every one of them.
 
 make_url_request_using_cache: Check the cache for a saved result for this url. If the result is found, return it. Otherwise send a new request, save it, then return it.
@@ -22,7 +22,7 @@ Secrets,
 Plotly,
 Flask,
 Os
-
+Moreover, users also need to use the templates file to run the program, and save the templates file in the same directory with "Final Project" and "Secrets".
 
 After run the program and open the link, users can click on four links to view graphs about the movies’ data, or input a number to search movie’s information.
 
