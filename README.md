@@ -15,12 +15,12 @@ create_omdb_database: generate imdb database using information from OMDB(list of
 make_language_bar_plot, make_genre_bar_plot, make_country_bar_plot, make_rated_bar_plot: link to database and based on different criteria making bar plots
 
 To run this program, users need to import those packages:
-sqlite3
-requests
-BeautifulSoup
-Secrets
-Plotly
-Flask
+sqlite3,
+requests,
+BeautifulSoup,
+Secrets,
+Plotly,
+Flask,
 Os
 
 
